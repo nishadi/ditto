@@ -1,5 +1,10 @@
+import csv
 import os
+import resource
 import sys
+import time
+
+import fcntl
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -104,6 +109,75 @@ def evaluate(model, iterator, threshold=None):
 
         return f1, best_th
 
+def persist_results(model, iterator, train_time, test_time, train_max_mem,
+                    test_max_mem, dataset_name, threshold=None):
+    """Evaluate a model on a validation/test dataset
+
+    Args:
+        model (DMModel): the EM model
+        iterator (Iterator): the valid/test dataset iterator
+        threshold (float, optional): the threshold on the 0-class
+
+    Returns:
+        float: the F1 score
+        float (optional): if threshold is not provided, the threshold
+            value that gives the optimal F1
+    """
+    all_p = []
+    all_y = []
+    all_probs = []
+    with torch.no_grad():
+        for batch in iterator:
+            x, y = batch
+            logits = model(x)
+            probs = logits.softmax(dim=1)[:, 1]
+            all_probs += probs.cpu().numpy().tolist()
+            all_y += y.cpu().numpy().tolist()
+
+
+    pred = [1 if p > threshold else 0 for p in all_probs]
+
+
+    # Persist results
+    result_file = '/home/remote/u6852937/projects/results.csv'
+    file_exists = os.path.isfile(result_file)
+
+    dataset_name = dataset_name.lower().replace('/', '_')
+
+    with open(result_file, 'a') as results_file:
+      heading_list = ['method', 'dataset_name', 'train_time', 'test_time',
+                      'train_max_mem', 'test_max_mem', 'TP', 'FP', 'FN',
+                      'TN', 'Pre', 'Re', 'F1', 'Fstar']
+      writer = csv.DictWriter(results_file, fieldnames=heading_list)
+
+      if not file_exists:
+        writer.writeheader()
+
+      p = metrics.precision_score(all_y, pred)
+      r = metrics.recall_score(all_y, pred)
+      f1 = metrics.f1_score(all_y, pred)
+      f_star = 0 if (p + r - p * r) == 0 else p * r / (p + r - p * r)
+      tn, fp, fn, tp = metrics.confusion_matrix(all_y, pred).ravel()
+      fcntl.flock(results_file, fcntl.LOCK_EX)
+      result_dict = {
+        'method': 'ditto',
+        'dataset_name': dataset_name,
+        'train_time': round(train_time, 2),
+        'test_time': round(test_time, 2),
+        'train_max_mem': train_max_mem,
+        'test_max_mem': test_max_mem,
+        'TP': tp,
+        'FP': fp,
+        'FN': fn,
+        'TN': tn,
+        'Pre': ('{prec:.2f}').format(prec=p * 100),
+        'Re': ('{rec:.2f}').format(rec=r * 100),
+        'F1': ('{f1:.2f}').format(f1=f1 * 100),
+        'Fstar': ('{fstar:.2f}').format(fstar=f_star * 100)
+      }
+      writer.writerow(result_dict)
+      fcntl.flock(results_file, fcntl.LOCK_UN)
+
 
 def train_step(train_iter, model, optimizer, scheduler, hp):
     """Perform a single training step
@@ -195,15 +269,26 @@ def train(trainset, validset, testset, run_tag, hp):
     writer = SummaryWriter(log_dir=hp.logdir)
 
     best_dev_f1 = best_test_f1 = 0.0
+    th=0.5
+    train_time, test_time = 0, 0
+    train_max_mem, test_max_mem = 0, 0
     for epoch in range(1, hp.n_epochs+1):
         # train
+        train_start_time = time.time()
         model.train()
         train_step(train_iter, model, optimizer, scheduler, hp)
+        train_end_time = time.time()
+        train_time += train_end_time - train_start_time
+        train_max_mem = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
 
         # eval
+        test_start_time = time.time()
         model.eval()
         dev_f1, th = evaluate(model, valid_iter)
         test_f1 = evaluate(model, test_iter, threshold=th)
+        test_end_time = time.time()
+        test_time += test_end_time - test_start_time
+        test_max_mem = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
 
         if dev_f1 > best_dev_f1:
             best_dev_f1 = dev_f1
@@ -228,5 +313,8 @@ def train(trainset, validset, testset, run_tag, hp):
         scalars = {'f1': dev_f1,
                    't_f1': test_f1}
         writer.add_scalars(run_tag, scalars, epoch)
+
+    persist_results(model, test_iter, train_time, test_time, train_max_mem,
+                    test_max_mem, hp.task, threshold=th)
 
     writer.close()
