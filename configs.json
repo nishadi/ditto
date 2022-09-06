@@ -902,4 +902,69 @@
   "trainset": "data/wdc/cameras/title_description_brand_specTableContent/train.txt.xlarge",
   "validset": "data/wdc/cameras/title_description_brand_specTableContent/valid.txt.xlarge",
   "testset": "data/wdc/cameras/title_description_brand_specTableContent/test.txt"
-}]
+},
+{
+  "name": "D2",
+  "task_type": "classification",
+  "vocab": ["0", "1"],
+  "trainset": "data/D2/train.txt",
+  "validset": "data/D2/valid.txt",
+  "testset": "data/D2/test.txt"
+},
+  {
+  "name": "D3",
+  "task_type": "classification",
+  "vocab": ["0", "1"],
+  "trainset": "data/D3/train.txt",
+  "validset": "data/D3/valid.txt",
+  "testset": "data/D3/test.txt"
+},
+  {
+  "name": "D4",
+  "task_type": "classification",
+  "vocab": ["0", "1"],
+  "trainset": "data/D4/train.txt",
+  "validset": "data/D4/valid.txt",
+  "testset": "data/D4/test.txt"
+},
+  {
+  "name": "D5",
+  "task_type": "classification",
+  "vocab": ["0", "1"],
+  "trainset": "data/D5/train.txt",
+  "validset": "data/D5/valid.txt",
+  "testset": "data/D5/test.txt"
+},
+  {
+  "name": "D6",
+  "task_type": "classification",
+  "vocab": ["0", "1"],
+  "trainset": "data/D6/train.txt",
+  "validset": "data/D6/valid.txt",
+  "testset": "data/D6/test.txt"
+},
+  {
+  "name": "D7",
+  "task_type": "classification",
+  "vocab": ["0", "1"],
+  "trainset": "data/D7/train.txt",
+  "validset": "data/D7/valid.txt",
+  "testset": "data/D7/test.txt"
+},
+  {
+  "name": "D8",
+  "task_type": "classification",
+  "vocab": ["0", "1"],
+  "trainset": "data/D8/train.txt",
+  "validset": "data/D8/valid.txt",
+  "testset": "data/D8/test.txt"
+},
+  {
+  "name": "D9",
+  "task_type": "classification",
+  "vocab": ["0", "1"],
+  "trainset": "data/D9/train.txt",
+  "validset": "data/D9/valid.txt",
+  "testset": "data/D9/test.txt"
+}
+]
